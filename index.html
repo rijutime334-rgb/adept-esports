@@ -11,7 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<!-- FCM SDK যোগ করা হয়েছে -->
+<!-- FCM SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
@@ -492,7 +492,7 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
     </div>
     <button class="btn-2" id="pMyT" style="padding:16px;margin-top:12px"><i class="fas fa-trophy"></i> My Tournaments</button>
 
-    <!-- নতুন পুশ নোটিফিকেশন বাটন -->
+    <!-- পুশ নোটিফিকেশন বাটন -->
     <button class="btn-2" id="enablePushBtn" style="padding:16px;margin-top:12px;border-color:var(--gold);color:var(--gold)" onclick="window.enablePushNotifications()">
       <i class="fas fa-bell"></i> Enable Push Notifications
     </button>
@@ -561,7 +561,7 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
 
 <script>
 (function(){
-  console.log('=== ADEPT USER v8.0 · PUSH NOTIFICATION INCLUDED ===');
+  console.log('=== ADEPT USER v8.0 · FULL FIXED ===');
 
   var firebaseConfig = {
     apiKey: "AIzaSyBpNT8aGjffomVfN6oXduP02WIad9hUxvs",
@@ -573,20 +573,24 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
     appId: "1:249538850118:web:a39ffb58dbb994028a4947"
   };
 
-  var db = null, auth = null, messaging = null; // messaging added
+  var db = null, auth = null, messaging = null;
   
   try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     auth = firebase.auth();
-    // FCM Initialization
-    try {
-      messaging = firebase.messaging();
-    } catch(e) {
-      console.warn('FCM not supported in this browser', e);
-    }
-    console.log('✅ Firebase & FCM ready');
+    console.log('✅ Firebase ready');
   } catch(e) { console.error('❌', e); }
+
+  // FCM আলাদাভাবে চেক করা হচ্ছে (যাতে অ্যাপ ক্র্যাশ না করে)
+  try {
+    if (window.firebase && typeof firebase.messaging === 'function') {
+      messaging = firebase.messaging();
+      console.log('✅ FCM ready');
+    }
+  } catch(e) { 
+    console.warn('FCM not supported in this browser', e); 
+  }
 
   var currentUser = null;
   var wallet = { balance: 0, totalDeposited: 0, totalWithdrawn: 0, totalWinnings: 0, lockedBalance: 0 };
@@ -604,8 +608,6 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
   var IDLE_TIMEOUT = 30 * 60 * 1000;
   var IDLE_WARN = 60 * 1000;
   var listeners = [];
-
-  // ⭐ BACK BUTTON GUARDS
   var backGuardEnabled = false;
 
   function escapeHtml(s){
@@ -822,10 +824,8 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
     showAuth();
   }
 
-  // FCM Permission এবং Token Save
   window.enablePushNotifications = function() {
     if (!messaging || !currentUser) { toast('Please login first', true); return; }
-
     Notification.requestPermission().then(function(permission) {
       if (permission !== 'granted') {
         toast('Notification permission denied', true);
@@ -837,7 +837,6 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
         toast('Failed to get device token', true);
         return;
       }
-      
       return db.ref('users/' + currentUser.uid + '/fcmTokens/' + token).set({
         token: token,
         createdAt: Date.now(),
@@ -859,7 +858,6 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
 
   function loadUserData(uid){
     if (!db) return;
-
     addListener(db.ref('users/' + uid), 'value', function(snap){
       if (!snap.exists()) return;
       var u = snap.val();
@@ -920,7 +918,6 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
 
   function initListeners(){
     if (!db) return;
-
     addListener(db.ref('settings'), 'value', function(snap){
       var s = snap.val() || {};
       if (s.upiId) appSettings.upiId = s.upiId;
@@ -1605,13 +1602,10 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
     });
   }
 
-  // ⭐⭐⭐ BACK BUTTON HANDLER ⭐⭐⭐
   function setupBackButton(){
     try { history.pushState({ backGuard: true }, '', location.href); } catch(e){}
-
     window.addEventListener('popstate', function(e){
       if (isBlocked) return;
-
       var modalOv = document.getElementById('modalOv');
       var notifOv = document.getElementById('notifModalOv');
       var annOv = document.getElementById('announceModalOv');
@@ -1632,7 +1626,6 @@ h1,h2,h3,h4{font-family:'Poppins',sans-serif;font-weight:700;letter-spacing:-.02
         try { history.pushState({ backGuard: true }, '', location.href); } catch(err){}
         return;
       }
-
       if (currentNav !== 'home') {
         switchScreen('home');
         try { history.pushState({ backGuard: true }, '', location.href); } catch(err){}
